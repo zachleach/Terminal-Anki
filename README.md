@@ -1,4 +1,4 @@
-# anki
+# Terminal Anki
 
 A minimal spaced repetition system using vim as the flashcard interface.
 
@@ -26,7 +26,11 @@ The problem is that Anki has its own interface for creating and reviewing cards.
    ```bash
    # custom spaced repetition code
    function anki() {
-       cd ~/anki && python3 anki.py "$@"
+       if [[ -z "$1" ]]; then
+           cd ~/anki && python3 anki.py
+       else
+           python3 ~/anki/anki.py "$@"
+       fi
    }
    ```
 
