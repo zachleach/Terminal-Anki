@@ -8,6 +8,37 @@ Anki is a flashcard application that uses spaced repetition to help you remember
 
 The problem is that Anki has its own interface for creating and reviewing cards. If you take notes in a text editor like vim, you have to copy and paste content into Anki separately. This project eliminates that friction by bringing spaced repetition to the terminal—your notes are your flashcards, and you create and review them in the same place.
 
+## Installation
+
+### Requirements
+
+- Python 3.6+
+- vim
+
+### Setup
+
+1. Clone or copy this repository to `~/anki`:
+   ```bash
+   git clone <repo-url> ~/anki
+   ```
+
+2. Add to your `~/.bashrc` (or `~/.zshrc`):
+   ```bash
+   # custom spaced repetition code
+   function anki() {
+       cd ~/anki && python3 anki.py "$@"
+   }
+   ```
+
+3. Reload your shell:
+   ```bash
+   source ~/.bashrc
+   ```
+
+4. Add the vim keybindings to `~/.vimrc` (see [vimrc Configuration](#vimrc-configuration) below)
+
+5. Run `anki` to verify installation
+
 ## Overview
 
 Flashcards are stored as plain text files. Each card is a "question-answer chunk" - a block of text starting with `?` on the first line (the question), followed by the answer on subsequent lines.
