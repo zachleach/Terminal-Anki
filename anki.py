@@ -256,6 +256,7 @@ def review_due_questions(file_path):
         if not due:
             if not reviewed_hashes:
                 print("No due questions in this file.")
+            subprocess.run(['clear'])
             return
 
         # Use deque for flexible card navigation
@@ -310,6 +311,7 @@ def review_due_questions(file_path):
                 reviewed_hashes.add(question_hash)
         else:
             # while-loop completed without break = all done
+            subprocess.run(['clear'])
             return
 
 
