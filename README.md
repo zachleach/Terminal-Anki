@@ -171,6 +171,25 @@ anki -f file.txt
 anki --forget file.txt
 ```
 
+## Workflow Tips
+
+### Using fzf for File Selection
+
+For reviewing flashcards in nested directories, using fzf with sourced keybindings provides a much faster workflow than manually typing file paths. Install fzf and add its keybindings to your shell:
+
+```bash
+# Add to ~/.bashrc (or ~/.zshrc)
+source /usr/share/doc/fzf/examples/key-bindings.bash
+```
+
+With this setup, you can use `Ctrl-T` to fuzzy find any file:
+
+```bash
+anki <Ctrl-T>
+```
+
+This opens an interactive fuzzy finder where you can type partial matches to quickly locate deeply nested flashcard files without typing the full path.
+
 ## Pseudocode
 
 ### Review Session
