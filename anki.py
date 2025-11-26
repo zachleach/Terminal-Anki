@@ -8,6 +8,7 @@ import hashlib
 import os
 import sqlite3
 import subprocess
+from collections import deque
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -18,7 +19,7 @@ DB_PATH = Path.home() / "anki" / "anki.db"
 
 
 # Vim exit codes determine review outcome
-QUIT, WRONG, CORRECT, SKIP = 0, 1, 2, 3
+QUIT, WRONG, CORRECT, SKIP, EDIT, UNDO = 0, 1, 2, 3, 4, 5
 
 
 def compute_sha256_hash(text):
@@ -198,9 +199,15 @@ def display_flashcard_in_vim(question_answer_pair_chunk, name=None):
         cmd.extend(['-c', f'file {name}'])
     cmd.append('-')
 
-    result = subprocess.run(cmd, input=question_answer_pair_chunk.encode())
     subprocess.run(['clear'])
+    result = subprocess.run(cmd, input=question_answer_pair_chunk.encode())
     return result.returncode
+
+
+def open_file_for_editing(file_path):
+    """Open the source file in vim for editing."""
+    subprocess.run(['vim', file_path])
+    subprocess.run(['clear'])
 
 
 def get_due_questions(question_answer_pair_chunks):
@@ -220,21 +227,74 @@ def review_due_questions(file_path):
         return
 
     initialize_database()
-    question_answer_pair_chunks = parse_question_answer_pair_chunks_from_file(file_path)
-    due = get_due_questions(question_answer_pair_chunks)
+    reviewed_hashes = set()  # Track questions already answered this session
+    history_stack = []  # Track previous states for undo: [(hash, prev_state, question_data)]
 
-    if not due:
-        print("No due questions in this file.")
-        return
+    while True:
+        # Re-parse file (fresh content after edits)
+        question_answer_pair_chunks = parse_question_answer_pair_chunks_from_file(file_path)
+        due = get_due_questions(question_answer_pair_chunks)
 
-    for question_line, question_answer_pair_chunk in due:
-        question_hash = compute_sha256_hash(question_line)
-        exit_code = display_flashcard_in_vim(question_answer_pair_chunk, file_path)
+        # Filter out questions we've already reviewed this session
+        due = [(q, c) for q, c in due
+               if compute_sha256_hash(q) not in reviewed_hashes]
 
-        if exit_code == QUIT:
-            break
+        if not due:
+            if not reviewed_hashes:
+                print("No due questions in this file.")
+            return
+
+        # Use deque for flexible card navigation
+        due_deque = deque(due)
+
+        while due_deque:
+            question_line, question_answer_pair_chunk = due_deque.popleft()
+            question_hash = compute_sha256_hash(question_line)
+            exit_code = display_flashcard_in_vim(question_answer_pair_chunk, file_path)
+
+            if exit_code == QUIT:
+                return
+            elif exit_code == EDIT:
+                open_file_for_editing(file_path)
+                break  # Exit inner loop to re-parse file
+            elif exit_code == UNDO:
+                if not history_stack:
+                    return  # No history - terminate session
+
+                # Pop the last reviewed question
+                prev_hash, prev_state, (prev_q_line, prev_chunk) = history_stack.pop()
+
+                # Restore previous database state
+                connection = sqlite3.connect(DB_PATH)
+                if prev_state is None:
+                    # Was a new question - remove from database
+                    connection.execute("DELETE FROM schedule_info WHERE question_hash = ?", [prev_hash])
+                else:
+                    # Restore the old state
+                    connection.execute(
+                        "INSERT OR REPLACE INTO schedule_info (question_hash, due_date, review_date_index) VALUES (?, ?, ?)",
+                        [prev_hash, prev_state[0], prev_state[1]]
+                    )
+                connection.commit()
+                connection.close()
+
+                # Remove from reviewed set so it can be shown again
+                reviewed_hashes.discard(prev_hash)
+
+                # Put current card back on the queue, then the previous card
+                due_deque.appendleft((question_line, question_answer_pair_chunk))
+                due_deque.appendleft((prev_q_line, prev_chunk))
+            else:
+                # Normal review outcomes (WRONG, CORRECT, SKIP)
+                # Capture previous state before updating
+                prev_state = get_due_date_and_schedule_index_from_database(question_hash)
+                history_stack.append((question_hash, prev_state, (question_line, question_answer_pair_chunk)))
+
+                update_schedule_after_review(question_hash, exit_code)
+                reviewed_hashes.add(question_hash)
         else:
-            update_schedule_after_review(question_hash, exit_code)
+            # while-loop completed without break = all done
+            return
 
 
 def custom_study_all_questions(file_path):

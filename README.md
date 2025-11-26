@@ -26,11 +26,7 @@ The problem is that Anki has its own interface for creating and reviewing cards.
    ```bash
    # custom spaced repetition code
    function anki() {
-       if [[ -z "$1" ]]; then
-           cd ~/anki && python3 anki.py
-       else
-           python3 ~/anki/anki.py "$@"
-       fi
+       cd ~/anki && python3 anki.py "$@"
    }
    ```
 
@@ -100,7 +96,13 @@ To record your response, vim exits with a specific code using `:cq N`. The exit 
 | `<Enter>` | Correct—advance to next interval    |
 | `1`       | Wrong—reset interval to 0           |
 | `-`       | Skip—due tomorrow                   |
+| `e`       | Edit source file—no schedule update |
+| `<C-z>`   | Undo—restore previous card and state|
 | `:q`      | Quit session                        |
+
+When you press `e`, the review session pauses and opens the source file in vim for editing. After you save and close vim, the file is re-parsed and the review session continues with your edits applied. The current question you were viewing is not scheduled (treated as unanswered), and you won't be re-shown questions you already answered earlier in the session.
+
+When you press `<C-z>` (ctrl-z), the system restores the previous card's database state and re-displays it. If the previous card was new (not yet in the database), undo removes it from the database. Undo only works within the current session—history is cleared when you quit. If there's no history (first card), ctrl-z terminates the review session.
 
 ### vimrc Configuration
 
@@ -110,6 +112,8 @@ These mappings only trigger in stdin mode (`vim -`), so they won't affect normal
 autocmd StdinReadPost * nnoremap <buffer> 1 :cq 1<CR>
 autocmd StdinReadPost * nnoremap <buffer> <CR> :cq 2<CR>
 autocmd StdinReadPost * nnoremap <buffer> - :cq 3<CR>
+autocmd StdinReadPost * nnoremap <buffer> e :cq 4<CR>
+autocmd StdinReadPost * nnoremap <buffer> <C-z> :cq 5<CR>
 autocmd StdinReadPost * nnoremap <buffer> <Space> :earlier 99999h<CR>
 ```
 
@@ -173,25 +177,42 @@ anki --forget file.txt
 
 ```
 review_file(filepath):
-    chunks = parse_chunks_from_file(filepath)
+    reviewed_hashes = set()
+    history_stack = []  # [(hash, prev_state, (question_line, chunk))]
 
-    for chunk in chunks:
-        hash = sha256(first_line_of(chunk))
+    while true:
+        chunks = parse_chunks_from_file(filepath)
+        due_chunks = filter chunks where is_due(hash) and hash not in reviewed_hashes
 
-        if not is_due(hash):
-            continue
+        if no due_chunks:
+            break
 
-        exit_code = display_in_vim(chunk)
-        schedule_index = get_schedule_index(hash)
+        due_deque = deque(due_chunks)
 
-        if exit_code == 0:
-            break  # user quit
-        else if exit_code == 1:  # wrong
-            set_schedule(hash, index=0)
-        else if exit_code == 2:  # correct
-            set_schedule(hash, index=schedule_index + 1)
-        else if exit_code == 3:  # skip
-            set_due_date(hash, tomorrow)
+        while due_deque is not empty:
+            (question_line, chunk) = due_deque.popleft()
+            hash = sha256(question_line)
+            exit_code = display_in_vim(chunk)
+
+            if exit_code == 0:  # quit
+                return
+            else if exit_code == 4:  # edit
+                open_file_in_vim(filepath)
+                break  # re-parse file and continue
+            else if exit_code == 5:  # undo
+                if history_stack is empty:
+                    return  # No history - terminate session
+                (prev_hash, prev_state, (prev_line, prev_chunk)) = history_stack.pop()
+                restore_schedule_state(prev_hash, prev_state)
+                reviewed_hashes.remove(prev_hash)
+                # Put current card back, then previous card
+                due_deque.appendleft((question_line, chunk))
+                due_deque.appendleft((prev_line, prev_chunk))
+            else if exit_code in [1, 2, 3]:  # wrong, correct, skip
+                prev_state = get_schedule_state(hash)
+                history_stack.push((hash, prev_state, (question_line, chunk)))
+                update_schedule(hash, exit_code)
+                reviewed_hashes.add(hash)
 ```
 
 ### Due Date Calculation
