@@ -96,7 +96,7 @@ def update_schedule_after_review(question_hash, review_result):
         due_date = today + timedelta(days=SCHEDULE_INTERVALS_DAYS[new_index])
     elif review_result == SKIP:
         new_index = current_index
-        due_date = today + timedelta(days=1)
+        due_date = today
 
     connection = sqlite3.connect(DB_PATH)
     connection.execute(
@@ -204,9 +204,23 @@ def display_flashcard_in_vim(question_answer_pair_chunk, name=None):
     return result.returncode
 
 
-def open_file_for_editing(file_path):
-    """Open the source file in vim for editing."""
-    subprocess.run(['vim', file_path])
+def open_file_for_editing(file_path, question_line=None):
+    """Open the source file in vim for editing, optionally at the question's line."""
+    if question_line:
+        # Use grep to find the line number
+        result = subprocess.run(
+            ['grep', '-n', '-F', '-m', '1', question_line, file_path],
+            capture_output=True,
+            text=True
+        )
+        if result.stdout:
+            line_number = result.stdout.split(':')[0]
+            subprocess.run(['vim', f'+{line_number}', '-c', 'normal zt', file_path])
+        else:
+            # Fallback if grep fails
+            subprocess.run(['vim', file_path])
+    else:
+        subprocess.run(['vim', file_path])
     subprocess.run(['clear'])
 
 
@@ -253,12 +267,14 @@ def review_due_questions(file_path):
             exit_code = display_flashcard_in_vim(question_answer_pair_chunk, file_path)
 
             if exit_code == QUIT:
+                subprocess.run(['clear'])
                 return
             elif exit_code == EDIT:
-                open_file_for_editing(file_path)
+                open_file_for_editing(file_path, question_line)
                 break  # Exit inner loop to re-parse file
             elif exit_code == UNDO:
                 if not history_stack:
+                    subprocess.run(['clear'])
                     return  # No history - terminate session
 
                 # Pop the last reviewed question

@@ -95,7 +95,7 @@ To record your response, vim exits with a specific code using `:cq N`. The exit 
 | `<Space>` | Reveal answer (`:earlier 99999h`)   |
 | `<Enter>` | Correct—advance to next interval    |
 | `1`       | Wrong—reset interval to 0           |
-| `-`       | Skip—due tomorrow                   |
+| `-`       | Skip—remains due today              |
 | `e`       | Edit source file—no schedule update |
 | `<C-z>`   | Undo—restore previous card and state|
 | `:q`      | Quit session                        |
