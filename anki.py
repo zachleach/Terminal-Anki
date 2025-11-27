@@ -85,7 +85,9 @@ def get_due_date_and_schedule_index_from_database(question_hash):
 def update_schedule_after_review(question_hash, review_result):
     """Single entry point for all review outcomes"""
     info = get_due_date_and_schedule_index_from_database(question_hash)
-    current_index = info[1] if info else 0
+    # New cards start at index 1 (skip 0-day and 1-day intervals)
+    # First correct answer will advance to index 2 (3-day interval)
+    current_index = info[1] if info else 1
     today = datetime.now().date()
 
     if review_result == WRONG:

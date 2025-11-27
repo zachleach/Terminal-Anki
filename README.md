@@ -75,12 +75,10 @@ This system uses a fixed interval schedule:
 
 ```txt
 [0, 1, 3, 7, 14, 28, 56] days
-          ↑
+    ↑
 ```
 
-If you answer correctly today while at the 7-day interval, you won't see that card again for 14 days. If you forget, the interval resets to 0 and you review it again today.
-
-New cards are due immediately.
+New cards start at index 1. If you answer correctly on your first review, the card advances to index 2 (3-day interval). If you answer correctly at the 7-day interval, you won't see that card again for 14 days. If you forget at any point, the interval resets to 0 and you review it again today.
 
 ## Vim Interface
 
