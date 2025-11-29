@@ -84,19 +84,44 @@ New cards start at index 1. If you answer correctly on your first review, the ca
 
 Cards are displayed in vim using stdin mode (`vim -`), which reads text from a pipe into a buffer. The review loop pipes each card's content to vim and uses a startup command to delete everything below the first line—hiding the answer while showing only the question.
 
-To reveal the answer, press `<Space>` which runs `:earlier 99999h`. This undoes all changes since the buffer was loaded, restoring the deleted answer text.
+To reveal the answer, press `<Space>`. This restores the deleted answer text and appends your original notes below a `---` separator, letting you compare the official answer with your personal summary.
 
 To record your response, vim exits with a specific code using `:cq N`. The exit code tells the review script how you performed:
 
 | Key       | Action                              |
 |-----------|-------------------------------------|
-| `<Space>` | Reveal answer (`:earlier 99999h`)   |
+| `<Space>` | Reveal answer with notes appended   |
 | `<Enter>` | Correct—advance to next interval    |
 | `1`       | Wrong—reset interval to 0           |
 | `-`       | Skip—remains due today              |
 | `e`       | Edit source file—no schedule update |
 | `<C-z>`   | Undo—restore previous card and state|
 | `:q`      | Quit session                        |
+
+**Example of revealed answer:**
+
+Before pressing `<Space>`, you see only:
+```
+?    what is the algorithm for converting CFG to CNF
+```
+
+After pressing `<Space>`:
+```
+?    what is the algorithm for converting CFG to CNF
+1.    add S_0 -> S
+2.    remove rhs non-solitary literals
+3.    remove rhs with more than 2x symbols
+4.    remove rhs with epsilon
+5.    remove rhs with 1x symbols
+
+---
+
+add S0 -> S
+remove solitary terminals
+remove epsilon transitions
+remove binary symbols
+remove solo symbols
+```
 
 When you press `e`, the review session pauses and opens the source file in vim for editing. After you save and close vim, the file is re-parsed and the review session continues with your edits applied. The current question you were viewing is not scheduled (treated as unanswered), and you won't be re-shown questions you already answered earlier in the session.
 
@@ -112,7 +137,7 @@ autocmd StdinReadPost * nnoremap <buffer> <CR> :cq 2<CR>
 autocmd StdinReadPost * nnoremap <buffer> - :cq 3<CR>
 autocmd StdinReadPost * nnoremap <buffer> e :cq 4<CR>
 autocmd StdinReadPost * nnoremap <buffer> <C-z> :cq 5<CR>
-autocmd StdinReadPost * nnoremap <buffer> <Space> :earlier 99999h<CR>
+autocmd StdinReadPost * nnoremap <buffer> <Space> :normal! ggjVG"ay<CR>:earlier 99999h<CR>:call append(line('$'), ['', '---', ''])<CR>:normal! G"ap<CR>
 ```
 
 ## Directory Structure
