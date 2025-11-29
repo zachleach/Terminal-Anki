@@ -19,7 +19,7 @@ DB_PATH = Path.home() / "anki" / "anki.db"
 
 
 # Vim exit codes determine review outcome
-QUIT, WRONG, CORRECT, SKIP, EDIT, UNDO = 0, 1, 2, 3, 4, 5
+QUIT, WRONG, EDIT, SKIP, CORRECT, UNDO = 0, 1, 2, 3, 4, 5
 
 
 def compute_sha256_hash(text):

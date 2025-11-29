@@ -84,14 +84,15 @@ New cards start at index 1. If you answer correctly on your first review, the ca
 
 Cards are displayed in vim using stdin mode (`vim -`), which reads text from a pipe into a buffer. The review loop pipes each card's content to vim and uses a startup command to delete everything below the first line—hiding the answer while showing only the question.
 
-To reveal the answer, press `<Space>`. This restores the deleted answer text and appends your original notes below a `---` separator, letting you compare the official answer with your personal summary.
+To reveal the answer, press `<Space>` or `<Enter>`. This restores the deleted answer text and appends your original notes below a `---` separator, letting you compare the official answer with your personal summary.
 
 To record your response, vim exits with a specific code using `:cq N`. The exit code tells the review script how you performed:
 
 | Key       | Action                              |
 |-----------|-------------------------------------|
 | `<Space>` | Reveal answer with notes appended   |
-| `<Enter>` | Correct—advance to next interval    |
+| `<Enter>` | Reveal answer with notes appended   |
+| `4`       | Correct—advance to next interval    |
 | `1`       | Wrong—reset interval to 0           |
 | `-`       | Skip—remains due today              |
 | `e`       | Edit source file—no schedule update |
@@ -100,12 +101,12 @@ To record your response, vim exits with a specific code using `:cq N`. The exit 
 
 **Example of revealed answer:**
 
-Before pressing `<Space>`, you see only:
+Before pressing `<Space>` or `<Enter>`, you see only:
 ```
 ?    what is the algorithm for converting CFG to CNF
 ```
 
-After pressing `<Space>`:
+After pressing `<Space>` or `<Enter>`:
 ```
 ?    what is the algorithm for converting CFG to CNF
 1.    add S_0 -> S
@@ -133,11 +134,12 @@ These mappings only trigger in stdin mode (`vim -`), so they won't affect normal
 
 ```vim
 autocmd StdinReadPost * nnoremap <buffer> 1 :cq 1<CR>
-autocmd StdinReadPost * nnoremap <buffer> <CR> :cq 2<CR>
+autocmd StdinReadPost * nnoremap <buffer> 4 :cq 4<CR>
 autocmd StdinReadPost * nnoremap <buffer> - :cq 3<CR>
-autocmd StdinReadPost * nnoremap <buffer> e :cq 4<CR>
+autocmd StdinReadPost * nnoremap <buffer> e :cq 2<CR>
 autocmd StdinReadPost * nnoremap <buffer> <C-z> :cq 5<CR>
 autocmd StdinReadPost * nnoremap <buffer> <Space> :normal! ggjVG"ay<CR>:earlier 99999h<CR>:call append(line('$'), ['', '---', ''])<CR>:normal! G"ap<CR>
+autocmd StdinReadPost * nnoremap <buffer> <CR> :normal! ggjVG"ay<CR>:earlier 99999h<CR>:call append(line('$'), ['', '---', ''])<CR>:normal! G"ap<CR>
 ```
 
 ## Directory Structure
