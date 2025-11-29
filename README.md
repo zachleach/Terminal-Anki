@@ -133,13 +133,26 @@ When you press `<C-z>` (ctrl-z), the system restores the previous card's databas
 These mappings only trigger in stdin mode (`vim -`), so they won't affect normal vim usage:
 
 ```vim
+function! RevealAnswer()
+    " Save what user typed, restore original content (question + answer),
+    " then append separator and user's typed answer for comparison
+    let typed = getline(2, '$')
+    call setreg('a', typed, 'l')
+    earlier 99999h
+    call append(line('$'), ['', '---', ''])
+    if !empty(typed)
+        normal! G"ap
+    endif
+    normal! G
+endfunction
+
 autocmd StdinReadPost * nnoremap <buffer> 1 :cq 1<CR>
 autocmd StdinReadPost * nnoremap <buffer> 4 :cq 4<CR>
 autocmd StdinReadPost * nnoremap <buffer> - :cq 3<CR>
 autocmd StdinReadPost * nnoremap <buffer> e :cq 2<CR>
 autocmd StdinReadPost * nnoremap <buffer> <C-z> :cq 5<CR>
-autocmd StdinReadPost * nnoremap <buffer> <Space> :normal! ggjVG"ay<CR>:earlier 99999h<CR>:call append(line('$'), ['', '---', ''])<CR>:normal! G"ap<CR>
-autocmd StdinReadPost * nnoremap <buffer> <CR> :normal! ggjVG"ay<CR>:earlier 99999h<CR>:call append(line('$'), ['', '---', ''])<CR>:normal! G"ap<CR>
+autocmd StdinReadPost * nnoremap <buffer> <Space> :call RevealAnswer()<CR>
+autocmd StdinReadPost * nnoremap <buffer> <CR> :call RevealAnswer()<CR>
 ```
 
 ## Directory Structure
